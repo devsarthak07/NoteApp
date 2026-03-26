@@ -6,6 +6,8 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { getNotes, saveNotes } from '../storage/noteStorage';
 import { colors } from '../theme/colors';
 
@@ -99,7 +101,6 @@ export default function NoteEditorScreen({ route, navigation }) {
     ]);
   };
 
-  // Image picker function
   const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -128,6 +129,58 @@ export default function NoteEditorScreen({ route, navigation }) {
         onPress: () => setImages(images.filter((_, i) => i !== index))
       }
     ]);
+  };
+
+  // PDF Export function
+  const exportAsPDF = async () => {
+    try {
+      const checklistHTML = checklist.length > 0
+        ? `<h3>Checklist</h3><ul>
+            ${checklist.map(item =>
+              `<li style="text-decoration: ${item.checked ? 'line-through' : 'none'}; color: ${item.checked ? '#888' : '#000'}">
+                ${item.checked ? '☑' : '☐'} ${item.text}
+              </li>`
+            ).join('')}
+           </ul>`
+        : '';
+
+      const voiceHTML = voiceUri
+        ? `<p>🎤 <em>Voice recording attached</em></p>`
+        : '';
+
+      const html = `
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 32px; color: #1A1A1A; }
+              h1 { color: #1A1A1A; border-bottom: 2px solid #F5C518; padding-bottom: 8px; }
+              h3 { color: #555; }
+              p { font-size: 15px; line-height: 1.6; }
+              ul { list-style: none; padding: 0; }
+              li { padding: 6px 0; font-size: 14px; }
+              .date { color: #888; font-size: 12px; margin-bottom: 16px; }
+              .footer { margin-top: 40px; color: #aaa; font-size: 11px; border-top: 1px solid #eee; padding-top: 8px; }
+            </style>
+          </head>
+          <body>
+            <h1>${title || 'Untitled Note'}</h1>
+            <p class="date">📅 ${new Date().toLocaleDateString()}</p>
+            ${content ? `<p>${content}</p>` : ''}
+            ${checklistHTML}
+            ${voiceHTML}
+            <div class="footer">Exported from NoteApp by devsarthak07</div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, {
+        UTI: '.pdf',
+        mimeType: 'application/pdf',
+      });
+    } catch (err) {
+      Alert.alert('Error', 'Could not export PDF!');
+    }
   };
 
   const saveNote = async () => {
@@ -263,6 +316,11 @@ export default function NoteEditorScreen({ route, navigation }) {
           </View>
         ))}
 
+        {/* PDF Export Button */}
+        <TouchableOpacity style={styles.pdfBtn} onPress={exportAsPDF}>
+          <Text style={styles.pdfBtnText}>📄 Export as PDF</Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -325,4 +383,10 @@ const styles = StyleSheet.create({
     width: 28, height: 28, justifyContent: 'center', alignItems: 'center',
   },
   deleteImageText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  pdfBtn: {
+    backgroundColor: '#1A1A1A', borderRadius: 12,
+    padding: 16, alignItems: 'center',
+    marginTop: 24, marginBottom: 40,
+  },
+  pdfBtnText: { color: '#F5C518', fontWeight: '700', fontSize: 15 },
 });
