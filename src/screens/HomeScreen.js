@@ -1,16 +1,19 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
-  TouchableOpacity, Alert, TextInput
+  TouchableOpacity, Alert, TextInput, Switch
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getNotes, saveNotes } from '../storage/noteStorage';
 import NoteCard from '../components/NoteCard';
-import { colors } from '../theme/colors';
+import { lightColors, darkColors } from '../theme/colors';
 
 export default function HomeScreen({ navigation }) {
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState('');
+  const [isDark, setIsDark] = useState(false);
+
+  const colors = isDark ? darkColors : lightColors;
 
   useFocusEffect(
     useCallback(() => {
@@ -38,11 +41,30 @@ export default function HomeScreen({ navigation }) {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>📝 My Notes</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <Text style={[styles.heading, { color: colors.text }]}>📝 My Notes</Text>
+        <View style={styles.darkModeRow}>
+          <Text style={{ color: colors.subtext, marginRight: 6 }}>
+            {isDark ? '🌙' : '🌞'}
+          </Text>
+          <Switch
+            value={isDark}
+            onValueChange={setIsDark}
+            trackColor={{ false: '#E0E0E0', true: '#444' }}
+            thumbColor={colors.primary}
+          />
+        </View>
+      </View>
 
       <TextInput
-        style={styles.search}
+        style={[styles.search, {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          color: colors.text,
+        }]}
         placeholder="Search notes..."
         value={search}
         onChangeText={setSearch}
@@ -51,7 +73,10 @@ export default function HomeScreen({ navigation }) {
 
       {filtered.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>No notes yet. Tap + to create one!</Text>
+          <Text style={{ fontSize: 48 }}>📝</Text>
+          <Text style={[styles.emptyText, { color: colors.subtext }]}>
+            No notes yet. Tap + to create one!
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -61,7 +86,8 @@ export default function HomeScreen({ navigation }) {
             <NoteCard
               note={item}
               index={index}
-              onPress={() => navigation.navigate('NoteEditor', { note: item })}
+              isDark={isDark}
+              onPress={() => navigation.navigate('NoteEditor', { note: item, isDark })}
               onLongPress={() => deleteNote(item.id)}
             />
           )}
@@ -70,8 +96,8 @@ export default function HomeScreen({ navigation }) {
       )}
 
       <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('NoteEditor', { note: null })}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => navigation.navigate('NoteEditor', { note: null, isDark })}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
@@ -80,19 +106,26 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 16, paddingTop: 52 },
-  heading: { fontSize: 28, fontWeight: '800', color: colors.text, marginBottom: 14 },
-  search: {
-    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 10, fontSize: 14, marginBottom: 16,
-    borderWidth: 1, borderColor: colors.border, color: colors.text,
+  container: { flex: 1, padding: 16, paddingTop: 52 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: colors.subtext, fontSize: 15 },
+  heading: { fontSize: 28, fontWeight: '800' },
+  darkModeRow: { flexDirection: 'row', alignItems: 'center' },
+  search: {
+    borderRadius: 12, paddingHorizontal: 14,
+    paddingVertical: 10, fontSize: 14, marginBottom: 16,
+    borderWidth: 1,
+  },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  emptyText: { fontSize: 15, textAlign: 'center' },
   fab: {
     position: 'absolute', bottom: 28, right: 24,
-    backgroundColor: colors.primary, width: 58, height: 58,
-    borderRadius: 29, justifyContent: 'center', alignItems: 'center',
+    width: 58, height: 58, borderRadius: 29,
+    justifyContent: 'center', alignItems: 'center',
     elevation: 6, shadowColor: '#000', shadowOpacity: 0.2,
     shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
   },
