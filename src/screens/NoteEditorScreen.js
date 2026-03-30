@@ -13,6 +13,13 @@ import { lightColors, darkColors } from '../theme/colors';
 
 const uuidv4 = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
+const NOTE_COLORS = [
+  '#FFF9C4', '#F8BBD0', '#C8E6C9',
+  '#BBDEFB', '#E1BEE7', '#FFE0B2',
+  '#B2EBF2', '#F0F4C3', '#FFE0E0',
+  null
+];
+
 export default function NoteEditorScreen({ route, navigation }) {
   const existing = route.params?.note;
   const isDark = route.params?.isDark || false;
@@ -22,12 +29,13 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [content, setContent] = useState(existing?.content || '');
   const [checklist, setChecklist] = useState(existing?.checklist || []);
   const [newTask, setNewTask] = useState('');
-  const [recordings, setRecordings] = useState(existing?.recordings || []);
   const [recording, setRecording] = useState(null);
+  const [recordings, setRecordings] = useState(existing?.recordings || []);
   const [isRecording, setIsRecording] = useState(false);
   const [playingId, setPlayingId] = useState(null);
   const [sound, setSound] = useState(null);
   const [images, setImages] = useState(existing?.images || []);
+  const [noteColor, setNoteColor] = useState(existing?.noteColor || null);
 
   useEffect(() => {
     navigation.setOptions({
@@ -40,7 +48,6 @@ export default function NoteEditorScreen({ route, navigation }) {
       ),
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12, gap: 16 }}>
-          {/* PDF Export Icon */}
           <TouchableOpacity
             onPress={exportAsPDF}
             style={{
@@ -53,14 +60,13 @@ export default function NoteEditorScreen({ route, navigation }) {
             <Text style={{ fontSize: 14 }}>📄</Text>
             <Text style={{ color: '#F5C518', fontWeight: '700', fontSize: 12 }}>PDF</Text>
           </TouchableOpacity>
-          {/* Save Icon */}
           <TouchableOpacity onPress={saveNote}>
             <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Save</Text>
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [title, content, checklist, recordings, images]);
+  }, [title, content, checklist, recordings, images, noteColor]);
 
   useEffect(() => {
     return sound ? () => { sound.unloadAsync(); } : undefined;
@@ -228,14 +234,14 @@ export default function NoteEditorScreen({ route, navigation }) {
     if (existing) {
       const updated = notes.map(n =>
         n.id === existing.id
-          ? { ...n, title, content, checklist, recordings, images, updatedAt: now }
+          ? { ...n, title, content, checklist, recordings, images, noteColor, updatedAt: now }
           : n
       );
       await saveNotes(updated);
     } else {
       const newNote = {
         id: uuidv4(), title, content, checklist,
-        recordings, images,
+        recordings, images, noteColor,
         createdAt: now, updatedAt: now,
       };
       await saveNotes([newNote, ...notes]);
@@ -259,11 +265,11 @@ export default function NoteEditorScreen({ route, navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: noteColor || colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        style={{ flex: 1, backgroundColor: colors.background, padding: 16 }}
+        style={{ flex: 1, padding: 16 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Title */}
@@ -337,14 +343,13 @@ export default function NoteEditorScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Toolbar — Voice and Image buttons */}
+        {/* Toolbar */}
         <View style={{
           flexDirection: 'row', gap: 10, marginBottom: 16,
           paddingVertical: 12, paddingHorizontal: 8,
           backgroundColor: colors.surface, borderRadius: 14,
           borderWidth: 1, borderColor: colors.border,
         }}>
-          {/* Record Button */}
           <TouchableOpacity
             style={{
               flex: 1, flexDirection: 'row', alignItems: 'center',
@@ -360,7 +365,6 @@ export default function NoteEditorScreen({ route, navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {/* Image Button */}
           <TouchableOpacity
             style={{
               flex: 1, flexDirection: 'row', alignItems: 'center',
@@ -371,9 +375,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             onPress={pickImage}
           >
             <Text style={{ fontSize: 16 }}>🖼️</Text>
-            <Text style={{ fontWeight: '700', color: colors.text, fontSize: 13 }}>
-              Image
-            </Text>
+            <Text style={{ fontWeight: '700', color: colors.text, fontSize: 13 }}>Image</Text>
           </TouchableOpacity>
         </View>
 
@@ -421,7 +423,7 @@ export default function NoteEditorScreen({ route, navigation }) {
 
         {/* Images List */}
         {images.length > 0 && (
-          <View style={{ marginBottom: 40 }}>
+          <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext, marginBottom: 8 }}>
               🖼️ Images ({images.length})
             </Text>
@@ -445,6 +447,35 @@ export default function NoteEditorScreen({ route, navigation }) {
             ))}
           </View>
         )}
+
+        {/* Color Palette */}
+        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext, marginBottom: 8, marginTop: 8 }}>
+          🎨 Note Color
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+          {NOTE_COLORS.map((color, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => setNoteColor(color)}
+              style={{
+                width: 36, height: 36,
+                borderRadius: 18,
+                backgroundColor: color || colors.surface,
+                borderWidth: noteColor === color ? 3 : 1.5,
+                borderColor: noteColor === color ? colors.text : colors.border,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              {color === null && (
+                <Text style={{ fontSize: 16 }}>🚫</Text>
+              )}
+              {noteColor === color && color !== null && (
+                <Text style={{ fontSize: 14 }}>✓</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
 
       </ScrollView>
     </KeyboardAvoidingView>

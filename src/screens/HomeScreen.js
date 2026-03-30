@@ -35,10 +35,42 @@ export default function HomeScreen({ navigation }) {
     ]);
   };
 
-  const filtered = notes.filter(n =>
-    n.title?.toLowerCase().includes(search.toLowerCase()) ||
-    n.content?.toLowerCase().includes(search.toLowerCase())
-  );
+  const pinNote = async (id) => {
+    const updated = notes.map(n =>
+      n.id === id ? { ...n, pinned: !n.pinned } : n
+    );
+    await saveNotes(updated);
+    setNotes(updated);
+  };
+
+  const showNoteOptions = (note) => {
+    Alert.alert(
+      note.title || 'Untitled',
+      'What do you want to do?',
+      [
+        {
+          text: note.pinned ? '📌 Unpin' : '📌 Pin',
+          onPress: () => pinNote(note.id)
+        },
+        {
+          text: '🗑️ Delete',
+          style: 'destructive',
+          onPress: () => deleteNote(note.id)
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const filtered = notes
+    .filter(n =>
+      n.title?.toLowerCase().includes(search.toLowerCase()) ||
+      n.content?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+  const pinnedNotes = filtered.filter(n => n.pinned);
+  const unpinnedNotes = filtered.filter(n => !n.pinned);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -59,6 +91,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
+      {/* Search */}
       <TextInput
         style={[styles.search, {
           backgroundColor: colors.surface,
@@ -82,14 +115,32 @@ export default function HomeScreen({ navigation }) {
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
+          ListHeaderComponent={() => (
+            <>
+              {/* Pinned Section */}
+              {pinnedNotes.length > 0 && (
+                <Text style={[styles.sectionLabel, { color: colors.subtext }]}>
+                  📌 PINNED
+                </Text>
+              )}
+            </>
+          )}
           renderItem={({ item, index }) => (
-            <NoteCard
-              note={item}
-              index={index}
-              isDark={isDark}
-              onPress={() => navigation.navigate('NoteEditor', { note: item, isDark })}
-              onLongPress={() => deleteNote(item.id)}
-            />
+            <>
+              {/* Unpinned label */}
+              {item.id === unpinnedNotes[0]?.id && pinnedNotes.length > 0 && (
+                <Text style={[styles.sectionLabel, { color: colors.subtext }]}>
+                  📝 OTHERS
+                </Text>
+              )}
+              <NoteCard
+                note={item}
+                index={index}
+                isDark={isDark}
+                onPress={() => navigation.navigate('NoteEditor', { note: item, isDark })}
+                onLongPress={() => showNoteOptions(item)}
+              />
+            </>
           )}
           contentContainerStyle={{ paddingBottom: 100 }}
         />
@@ -108,10 +159,8 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 52 },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 14,
   },
   heading: { fontSize: 28, fontWeight: '800' },
   darkModeRow: { flexDirection: 'row', alignItems: 'center' },
@@ -119,6 +168,10 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14,
     paddingVertical: 10, fontSize: 14, marginBottom: 16,
     borderWidth: 1,
+  },
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700',
+    letterSpacing: 1, marginBottom: 8, marginTop: 4,
   },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 15, textAlign: 'center' },
